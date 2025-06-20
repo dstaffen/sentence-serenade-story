@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, ArrowLeft, Users, Mail, Plus, Minus, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FormData {
   gameTitle: string;
@@ -171,30 +172,95 @@ const CreateGame = () => {
       return;
     }
 
-    // Mock data creation - replace with Supabase later
-    const gameId = Math.random().toString(36).substring(2, 15);
-    const participantId = Math.random().toString(36).substring(2, 15);
-    
-    console.log("Creating game:", {
-      gameId,
-      title: formData.gameTitle,
-      hostEmail: formData.hostEmail,
-      participants: formData.participantEmails.filter(email => email.trim()),
-      openingSentence: formData.openingSentence,
-      numParticipants: formData.numParticipants
-    });
+    try {
+      console.log("Starting game creation...");
 
-    toast({
-      title: "Game Created!",
-      description: "Your collaborative storytelling game has been created successfully."
-    });
-    
-    // Navigate to the game
-    setTimeout(() => {
-      navigate(`/game/${gameId}/${participantId}`);
-    }, 1000);
+      // Create game record
+      const { data: gameData, error: gameError } = await supabase
+        .from('games')
+        .insert({
+          title: formData.gameTitle,
+          max_participants: formData.numParticipants,
+          host_email: formData.hostEmail,
+          status: 'active',
+          current_turn: 1
+        })
+        .select()
+        .single();
 
-    setIsSubmitting(false);
+      if (gameError) {
+        console.error("Error creating game:", gameError);
+        throw new Error("Failed to create game");
+      }
+
+      console.log("Game created:", gameData);
+
+      // Prepare all participant emails (including host)
+      const allParticipantEmails = [
+        formData.hostEmail,
+        ...formData.participantEmails.filter(email => email.trim())
+      ];
+
+      // Create participant records with turn order
+      const participantRecords = allParticipantEmails.map((email, index) => ({
+        game_id: gameData.id,
+        email: email.toLowerCase(),
+        turn_order: index + 1,
+        has_completed: false
+      }));
+
+      const { data: participantsData, error: participantsError } = await supabase
+        .from('participants')
+        .insert(participantRecords)
+        .select();
+
+      if (participantsError) {
+        console.error("Error creating participants:", participantsError);
+        throw new Error("Failed to create participants");
+      }
+
+      console.log("Participants created:", participantsData);
+
+      // Create initial sentence record
+      const { error: sentenceError } = await supabase
+        .from('sentences')
+        .insert({
+          game_id: gameData.id,
+          turn_number: 1,
+          sentence_text: formData.openingSentence,
+          participant_email: formData.hostEmail.toLowerCase()
+        });
+
+      if (sentenceError) {
+        console.error("Error creating initial sentence:", sentenceError);
+        throw new Error("Failed to create opening sentence");
+      }
+
+      console.log("Initial sentence created");
+
+      // Find the first participant (turn_order = 1)
+      const firstParticipant = participantsData.find(p => p.turn_order === 1);
+      
+      toast({
+        title: "Game Created Successfully!",
+        description: "Game created! The first participant will receive an email shortly to continue the story."
+      });
+      
+      // Navigate to the game page for the first participant
+      setTimeout(() => {
+        navigate(`/game/${gameData.id}/${firstParticipant?.id}`);
+      }, 1500);
+
+    } catch (error) {
+      console.error("Error creating game:", error);
+      toast({
+        title: "Error Creating Game",
+        description: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
