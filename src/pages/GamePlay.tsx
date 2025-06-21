@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -54,6 +53,82 @@ const GamePlay = () => {
       fetchGameData();
     }
   }, [gameId, participantId]);
+
+  const sendTurnNotification = async (gameData: GameData, participantData: ParticipantData, previousSentence: string) => {
+    try {
+      const response = await fetch('/api/functions/v1/send-turn-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`
+        },
+        body: JSON.stringify({
+          gameId: gameData.id,
+          participantEmail: participantData.email,
+          participantId: participantData.id,
+          gameTitle: gameData.title,
+          previousSentence: previousSentence,
+          turnNumber: participantData.turn_order,
+          maxParticipants: gameData.max_participants
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send turn notification email');
+      }
+    } catch (error) {
+      console.error('Error sending turn notification:', error);
+    }
+  };
+
+  const sendCompleteStoryEmails = async (gameId: string, gameTitle: string) => {
+    try {
+      // Fetch all sentences for the game
+      const { data: sentences, error: sentencesError } = await supabase
+        .from('sentences')
+        .select('*')
+        .eq('game_id', gameId)
+        .order('turn_number', { ascending: true });
+
+      if (sentencesError || !sentences) {
+        console.error('Error fetching sentences:', sentencesError);
+        return;
+      }
+
+      // Fetch all participant emails
+      const { data: participants, error: participantsError } = await supabase
+        .from('participants')
+        .select('email')
+        .eq('game_id', gameId);
+
+      if (participantsError || !participants) {
+        console.error('Error fetching participants:', participantsError);
+        return;
+      }
+
+      const participantEmails = participants.map(p => p.email);
+
+      const response = await fetch('/api/functions/v1/send-complete-story', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`
+        },
+        body: JSON.stringify({
+          gameId,
+          gameTitle,
+          sentences,
+          participantEmails
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send complete story emails');
+      }
+    } catch (error) {
+      console.error('Error sending complete story emails:', error);
+    }
+  };
 
   const fetchGameData = async () => {
     try {
@@ -202,10 +277,33 @@ const GamePlay = () => {
         throw new Error("Failed to update game status");
       }
 
+      // If not the last turn, send email to next participant
+      if (!isLastTurn) {
+        const { data: nextParticipant, error: nextParticipantError } = await supabase
+          .from('participants')
+          .select('*')
+          .eq('game_id', gameId)
+          .eq('turn_order', gameData.current_turn + 1)
+          .single();
+
+        if (!nextParticipantError && nextParticipant) {
+          await sendTurnNotification(
+            { ...gameData, current_turn: gameData.current_turn + 1 },
+            nextParticipant,
+            currentSentence.trim()
+          );
+        }
+      } else {
+        // Game is complete, send final story to all participants
+        await sendCompleteStoryEmails(gameData.id, gameData.title);
+      }
+
       setHasSubmitted(true);
       toast({
         title: "Sentence submitted!",
-        description: "Your contribution has been added to the story.",
+        description: isLastTurn 
+          ? "Your contribution has been added to the story. All participants will receive the complete story via email!"
+          : "Your contribution has been added to the story. The next participant has been notified.",
       });
 
     } catch (error) {

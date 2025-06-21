@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -158,6 +157,33 @@ const CreateGame = () => {
     });
   };
 
+  const sendTurnNotification = async (gameData: any, participantData: any, previousSentence: string) => {
+    try {
+      const response = await fetch('/api/functions/v1/send-turn-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${supabase.supabaseKey}`
+        },
+        body: JSON.stringify({
+          gameId: gameData.id,
+          participantEmail: participantData.email,
+          participantId: participantData.id,
+          gameTitle: gameData.title,
+          previousSentence: previousSentence,
+          turnNumber: participantData.turn_order,
+          maxParticipants: gameData.max_participants
+        })
+      });
+
+      if (!response.ok) {
+        console.error('Failed to send turn notification email');
+      }
+    } catch (error) {
+      console.error('Error sending turn notification:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -240,6 +266,11 @@ const CreateGame = () => {
 
       // Find the first participant (turn_order = 1)
       const firstParticipant = participantsData.find(p => p.turn_order === 1);
+      
+      // Send email notification to first participant
+      if (firstParticipant) {
+        await sendTurnNotification(gameData, firstParticipant, formData.openingSentence);
+      }
       
       toast({
         title: "Game Created Successfully!",
