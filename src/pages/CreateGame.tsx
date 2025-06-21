@@ -159,13 +159,8 @@ const CreateGame = () => {
 
   const sendTurnNotification = async (gameData: any, participantData: any, previousSentence: string) => {
     try {
-      const response = await fetch('/api/functions/v1/send-turn-notification', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${supabase.supabaseKey}`
-        },
-        body: JSON.stringify({
+      const { error } = await supabase.functions.invoke('send-turn-notification', {
+        body: {
           gameId: gameData.id,
           participantEmail: participantData.email,
           participantId: participantData.id,
@@ -173,11 +168,11 @@ const CreateGame = () => {
           previousSentence: previousSentence,
           turnNumber: participantData.turn_order,
           maxParticipants: gameData.max_participants
-        })
+        }
       });
 
-      if (!response.ok) {
-        console.error('Failed to send turn notification email');
+      if (error) {
+        console.error('Failed to send turn notification email:', error);
       }
     } catch (error) {
       console.error('Error sending turn notification:', error);
