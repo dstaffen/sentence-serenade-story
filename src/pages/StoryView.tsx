@@ -1,4 +1,3 @@
-
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -6,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, ArrowLeft, Share, Download, Users, Calendar, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import SEOHead from "@/components/SEOHead";
 
 interface GameData {
   id: string;
@@ -163,6 +163,12 @@ const StoryView = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 print:bg-white">
+      <SEOHead 
+        title={`${gameData?.title} - Collaborative Story`}
+        description={`Read this amazing collaborative story: "${gameData?.title}" created with ${participants?.length || gameData?.max_participants} writers.`}
+        type="article"
+      />
+      
       {/* Header */}
       <header className="container mx-auto px-4 py-6 print:hidden">
         <div className="flex items-center justify-between">

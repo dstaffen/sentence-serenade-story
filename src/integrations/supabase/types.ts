@@ -11,30 +11,39 @@ export type Database = {
     Tables: {
       games: {
         Row: {
+          completed_at: string | null
           created_at: string
           current_turn: number
+          expires_at: string | null
           host_email: string
           id: string
           max_participants: number
           status: string
+          theme_id: string | null
           title: string
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           current_turn?: number
+          expires_at?: string | null
           host_email: string
           id?: string
           max_participants: number
           status?: string
+          theme_id?: string | null
           title?: string
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           current_turn?: number
+          expires_at?: string | null
           host_email?: string
           id?: string
           max_participants?: number
           status?: string
+          theme_id?: string | null
           title?: string
         }
         Relationships: []
@@ -109,12 +118,49 @@ export type Database = {
           },
         ]
       }
+      themes: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          starting_prompts: string[]
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          starting_prompts: string[]
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          starting_prompts?: string[]
+        }
+        Relationships: []
+      }
     }
     Views: {
-      [_ in never]: never
+      host_analytics: {
+        Row: {
+          active_games: number | null
+          avg_completion_hours: number | null
+          completed_games: number | null
+          host_email: string | null
+          last_game_created: string | null
+          total_games: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      auto_expire_games: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

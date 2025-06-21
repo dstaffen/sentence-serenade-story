@@ -9,6 +9,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, ArrowLeft, Users, Mail, Plus, Minus, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import ThemeSelector from "@/components/ThemeSelector";
+import HostAnalytics from "@/components/HostAnalytics";
+import SEOHead from "@/components/SEOHead";
 
 interface FormData {
   gameTitle: string;
@@ -16,6 +19,7 @@ interface FormData {
   hostEmail: string;
   participantEmails: string[];
   openingSentence: string;
+  themeId?: string;
 }
 
 interface FormErrors {
@@ -32,7 +36,8 @@ const CreateGame = () => {
     numParticipants: 8,
     hostEmail: "",
     participantEmails: [""],
-    openingSentence: ""
+    openingSentence: "",
+    themeId: undefined
   });
   
   const [errors, setErrors] = useState<FormErrors>({});
@@ -196,7 +201,7 @@ const CreateGame = () => {
     try {
       console.log("Starting game creation...");
 
-      // Create game record
+      // Create game record with theme
       const { data: gameData, error: gameError } = await supabase
         .from('games')
         .insert({
@@ -204,7 +209,8 @@ const CreateGame = () => {
           max_participants: formData.numParticipants,
           host_email: formData.hostEmail,
           status: 'active',
-          current_turn: 1
+          current_turn: 1,
+          theme_id: formData.themeId || null
         })
         .select()
         .single();
@@ -291,6 +297,11 @@ const CreateGame = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+      <SEOHead 
+        title="Create New Story - Exquisite Corpse"
+        description="Start a new collaborative storytelling game. Invite friends and create amazing stories together."
+      />
+      
       {/* Header */}
       <header className="container mx-auto px-4 py-6">
         <div className="flex items-center justify-between">
@@ -312,6 +323,13 @@ const CreateGame = () => {
             <h2 className="text-3xl font-bold text-slate-800 mb-4">Create a New Story</h2>
             <p className="text-slate-600">Set up your collaborative storytelling game and invite others to join the creative journey.</p>
           </div>
+
+          {/* Host Analytics */}
+          {formData.hostEmail && (
+            <div className="mb-6">
+              <HostAnalytics hostEmail={formData.hostEmail} />
+            </div>
+          )}
 
           <Card className="shadow-lg">
             <CardHeader>
@@ -385,6 +403,13 @@ const CreateGame = () => {
                     <p className="text-sm text-red-600">{errors.hostEmail}</p>
                   )}
                 </div>
+
+                {/* Theme Selection */}
+                <ThemeSelector
+                  selectedThemeId={formData.themeId}
+                  onThemeChange={(themeId) => setFormData({ ...formData, themeId })}
+                  onPromptSelect={(prompt) => setFormData({ ...formData, openingSentence: prompt })}
+                />
 
                 {/* Participant Emails */}
                 <div className="space-y-2">
