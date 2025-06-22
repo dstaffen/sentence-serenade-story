@@ -35,7 +35,7 @@ const CreateGame = () => {
     gameTitle: "",
     numParticipants: 8,
     hostEmail: "",
-    participantEmails: [""],
+    participantEmails: Array(7).fill(""), // Start with 7 empty fields for 8 total participants
     openingSentence: "",
     themeId: undefined
   });
@@ -91,13 +91,7 @@ const CreateGame = () => {
 
     const duplicates = Object.keys(emailCounts).filter(email => emailCounts[email] > 1);
     if (duplicates.length > 0) {
-      newErrors.general = "All participant emails must be unique";
-    }
-
-    // Check if host email is included in participants
-    const participantEmailsLower = validEmails.map(email => email.toLowerCase());
-    if (!participantEmailsLower.includes(formData.hostEmail.toLowerCase())) {
-      newErrors.general = "Host email must be included in the participants list";
+      newErrors.general = "All participant emails must be unique and different from host email";
     }
 
     // Check if we have enough participants
@@ -144,16 +138,12 @@ const CreateGame = () => {
 
   const handleNumParticipantsChange = (value: string) => {
     const num = parseInt(value);
-    const currentEmails = formData.participantEmails.filter(email => email.trim());
-    const newEmails = [...currentEmails];
+    const requiredParticipantEmails = num - 1; // Subtract 1 for the host
     
-    // Adjust the number of email fields
-    while (newEmails.length < num - 1) {
-      newEmails.push("");
-    }
-    while (newEmails.length > num - 1) {
-      newEmails.pop();
-    }
+    // Create exactly the right number of email fields
+    const newEmails = Array(requiredParticipantEmails).fill("").map((_, index) => {
+      return formData.participantEmails[index] || "";
+    });
 
     setFormData({
       ...formData,
@@ -413,8 +403,8 @@ const CreateGame = () => {
 
                 {/* Participant Emails */}
                 <div className="space-y-2">
-                  <Label>Participant Emails *</Label>
-                  <p className="text-sm text-slate-500">Add {formData.numParticipants - 1} participant email addresses</p>
+                  <Label>Other Participant Emails *</Label>
+                  <p className="text-sm text-slate-500">Add {formData.numParticipants - 1} other participant email addresses (your email will be automatically included)</p>
                   
                   <div className="space-y-3">
                     {formData.participantEmails.map((email, index) => (
@@ -426,31 +416,8 @@ const CreateGame = () => {
                           onChange={(e) => handleParticipantEmailChange(index, e.target.value)}
                           className={`flex-1 ${errors.participantEmails?.[index] ? 'border-red-500' : ''}`}
                         />
-                        {formData.participantEmails.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            onClick={() => removeParticipantEmail(index)}
-                            className="shrink-0"
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
-                        )}
                       </div>
                     ))}
-                    
-                    {formData.participantEmails.length < formData.numParticipants - 1 && (
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={addParticipantEmail}
-                        className="w-full"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Add Participant Email
-                      </Button>
-                    )}
                   </div>
                   
                   {errors.participantEmails && (
