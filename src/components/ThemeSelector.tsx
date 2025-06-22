@@ -43,6 +43,14 @@ const ThemeSelector = ({ selectedThemeId, onThemeChange, onPromptSelect }: Theme
     onPromptSelect(prompt);
   };
 
+  const handleThemeChange = (value: string) => {
+    if (value === "no-theme") {
+      onThemeChange(undefined);
+    } else {
+      onThemeChange(value);
+    }
+  };
+
   if (isLoading) {
     return (
       <Card>
@@ -68,12 +76,12 @@ const ThemeSelector = ({ selectedThemeId, onThemeChange, onPromptSelect }: Theme
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <Select value={selectedThemeId || ""} onValueChange={(value) => onThemeChange(value || undefined)}>
+        <Select value={selectedThemeId || "no-theme"} onValueChange={handleThemeChange}>
           <SelectTrigger>
             <SelectValue placeholder="Choose a theme for inspiration..." />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">No theme (Custom story)</SelectItem>
+            <SelectItem value="no-theme">No theme (Custom story)</SelectItem>
             {themes?.map((theme) => (
               <SelectItem key={theme.id} value={theme.id}>
                 <div>
