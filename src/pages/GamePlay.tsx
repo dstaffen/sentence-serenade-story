@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -170,20 +169,25 @@ const GamePlay = () => {
       // Check if it's this participant's turn
       const isMyTurn = game.current_turn === participant.turn_order;
       
-      // Check if participant has already completed their current turn
-      if (participant.has_completed && !isMyTurn) {
-        // Fetch the participant's submitted sentence to display it
-        const { data: participantSentence, error: sentenceError } = await supabase
-          .from('sentences')
-          .select('sentence_text')
-          .eq('game_id', gameId)
-          .eq('participant_email', participant.email)
-          .single();
+      console.log("Is my turn?", isMyTurn, "Game current turn:", game.current_turn, "Participant turn order:", participant.turn_order);
 
-        if (!sentenceError && participantSentence) {
-          setSubmittedSentence(participantSentence.sentence_text);
-        }
-        
+      // Check if there's already a sentence for this participant's current turn
+      const { data: existingSentences, error: existingSentenceError } = await supabase
+        .from('sentences')
+        .select('*')
+        .eq('game_id', gameId)
+        .eq('turn_number', participant.turn_order)
+        .eq('participant_email', participant.email);
+
+      if (existingSentenceError) {
+        console.error("Error checking existing sentences:", existingSentenceError);
+      }
+
+      console.log("Existing sentences for this participant:", existingSentences);
+
+      if (existingSentences && existingSentences.length > 0) {
+        // Participant has already submitted for their turn
+        setSubmittedSentence(existingSentences[0].sentence_text);
         setHasSubmitted(true);
         return;
       }
@@ -194,31 +198,13 @@ const GamePlay = () => {
         return;
       }
 
-      // Check if there's already a sentence for this turn (from a previous attempt)
-      const { data: existingSentences, error: existingSentenceError } = await supabase
-        .from('sentences')
-        .select('*')
-        .eq('game_id', gameId)
-        .eq('turn_number', game.current_turn)
-        .eq('participant_email', participant.email);
-
-      if (existingSentenceError) {
-        console.error("Error checking existing sentences:", existingSentenceError);
-      }
-
-      if (existingSentences && existingSentences.length > 0) {
-        // Participant has already submitted for this turn
-        setSubmittedSentence(existingSentences[0].sentence_text);
-        setHasSubmitted(true);
-        return;
-      }
-
+      // If we reach here, it's the participant's turn and they haven't submitted yet
       // Fetch the previous sentence (most recent one before current turn)
       const { data: sentences, error: sentenceError } = await supabase
         .from('sentences')
         .select('*')
         .eq('game_id', gameId)
-        .lt('turn_number', game.current_turn)
+        .lt('turn_number', participant.turn_order)
         .order('turn_number', { ascending: false })
         .limit(1);
 
