@@ -37,7 +37,9 @@ const handler = async (req: Request): Promise<Response> => {
       maxParticipants 
     }: TurnNotificationRequest = await req.json();
 
-    const participationLink = `${Deno.env.get("SUPABASE_URL")?.replace('/auth/v1', '')}/#/game/${gameId}/${participantId}`;
+    // Use the frontend application URL instead of Supabase URL
+    const frontendUrl = Deno.env.get("FRONTEND_URL") || "https://lovable.dev";
+    const participationLink = `${frontendUrl}/game/${gameId}/${participantId}`;
 
     const emailResponse = await resend.emails.send({
       from: "Exquisite Corpse <onboarding@resend.dev>",
