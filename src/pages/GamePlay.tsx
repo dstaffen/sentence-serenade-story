@@ -167,8 +167,11 @@ const GamePlay = () => {
         return;
       }
 
-      // Check if participant has already completed their turn
-      if (participant.has_completed) {
+      // Check if it's this participant's turn
+      const isMyTurn = game.current_turn === participant.turn_order;
+      
+      // Check if participant has already completed their current turn
+      if (participant.has_completed && !isMyTurn) {
         // Fetch the participant's submitted sentence to display it
         const { data: participantSentence, error: sentenceError } = await supabase
           .from('sentences')
@@ -185,8 +188,8 @@ const GamePlay = () => {
         return;
       }
 
-      // Check if it's this participant's turn
-      if (game.current_turn !== participant.turn_order) {
+      // If it's not their turn, show waiting message
+      if (!isMyTurn) {
         setError(`It's not your turn yet. Currently waiting for participant ${game.current_turn}.`);
         return;
       }

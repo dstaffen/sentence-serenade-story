@@ -81,6 +81,13 @@ export type Database = {
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "participants_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "host_analytics"
+            referencedColumns: ["game_id"]
+          },
         ]
       }
       sentences: {
@@ -116,6 +123,13 @@ export type Database = {
             referencedRelation: "games"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "sentences_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "host_analytics"
+            referencedColumns: ["game_id"]
+          },
         ]
       }
       themes: {
@@ -146,12 +160,16 @@ export type Database = {
     Views: {
       host_analytics: {
         Row: {
-          active_games: number | null
-          avg_completion_hours: number | null
-          completed_games: number | null
-          host_email: string | null
-          last_game_created: string | null
-          total_games: number | null
+          completed_participants: number | null
+          created_at: string | null
+          current_turn: number | null
+          game_id: string | null
+          game_status_display: string | null
+          max_participants: number | null
+          sentences_written: number | null
+          status: string | null
+          title: string | null
+          total_participants: number | null
         }
         Relationships: []
       }
