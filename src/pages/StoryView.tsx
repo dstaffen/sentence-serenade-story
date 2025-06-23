@@ -1,8 +1,9 @@
+
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, ArrowLeft, Share, Download, Users, Calendar, Sparkles } from "lucide-react";
+import { BookOpen, ArrowLeft, Share, Download, Users, Calendar, Sparkles, Clock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import SEOHead from "@/components/SEOHead";
@@ -13,6 +14,7 @@ interface GameData {
   created_at: string;
   status: string;
   max_participants: number;
+  current_turn: number;
 }
 
 interface SentenceData {
@@ -39,7 +41,6 @@ const StoryView = () => {
         .from('games')
         .select('*')
         .eq('id', gameId)
-        .eq('status', 'completed')
         .single();
       
       if (error) throw error;
@@ -97,7 +98,7 @@ const StoryView = () => {
         <div className="text-center">
           <BookOpen className="h-16 w-16 text-slate-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Story Not Found</h2>
-          <p className="text-slate-600 mb-6">This story may not exist or hasn't been completed yet.</p>
+          <p className="text-slate-600 mb-6">This story may not exist or hasn't been started yet.</p>
           <Link to="/">
             <Button>Back to Home</Button>
           </Link>
@@ -146,7 +147,7 @@ const StoryView = () => {
   };
 
   const handleDownload = () => {
-    const storyText = `${gameData.title}\n\nA collaborative story created with Exquisite Corpse\n\n${sentences.map(s => s.sentence_text).join(' ')}\n\nWritten by: ${participants?.map(p => getAuthorName(p.email)).join(', ')}\nCompleted on: ${formatDate(gameData.created_at)}`;
+    const storyText = `${gameData.title}\n\nA collaborative story created with Exquisite Corpse\n\n${sentences.map(s => s.sentence_text).join(' ')}\n\nWritten by: ${participants?.map(p => getAuthorName(p.email)).join(', ')}\n${gameData.status === 'completed' ? 'Completed on: ' + formatDate(gameData.created_at) : 'Story in Progress'}`;
     
     const blob = new Blob([storyText], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -160,6 +161,9 @@ const StoryView = () => {
   const totalWords = sentences.reduce((total, sentence) => {
     return total + sentence.sentence_text.split(' ').length;
   }, 0);
+
+  const isInProgress = gameData.status === 'active';
+  const progressPercentage = (sentences.length / gameData.max_participants) * 100;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 print:bg-white">
@@ -200,11 +204,34 @@ const StoryView = () => {
                 <span>{participants?.length || gameData.max_participants} writers</span>
               </div>
               <span className="hidden sm:inline">•</span>
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 print:h-4 print:w-4" />
-                <span>Completed {formatDate(gameData.created_at)}</span>
-              </div>
+              {isInProgress ? (
+                <div className="flex items-center space-x-2">
+                  <Clock className="h-5 w-5 print:h-4 print:w-4" />
+                  <span>Story in Progress ({sentences.length}/{gameData.max_participants} turns)</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 print:h-4 print:w-4" />
+                  <span>Completed {formatDate(gameData.created_at)}</span>
+                </div>
+              )}
             </div>
+            
+            {/* Progress Bar for In-Progress Stories */}
+            {isInProgress && (
+              <div className="mt-6 max-w-md mx-auto">
+                <div className="flex justify-between text-sm text-slate-600 mb-2">
+                  <span>Progress</span>
+                  <span>{Math.round(progressPercentage)}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                    style={{ width: `${progressPercentage}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Story Content */}
@@ -212,61 +239,76 @@ const StoryView = () => {
             <CardHeader className="text-center print:pb-4">
               <CardTitle className="flex items-center justify-center space-x-2 text-2xl print:text-xl">
                 <BookOpen className="h-6 w-6 text-blue-600 print:h-5 print:w-5" />
-                <span>The Complete Story</span>
+                <span>{isInProgress ? 'Story So Far' : 'The Complete Story'}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="print:px-4">
-              <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-8 rounded-xl print:bg-white print:p-4">
-                <div className="prose prose-lg max-w-none">
-                  <p className="text-slate-800 leading-relaxed text-lg print:text-base print:leading-relaxed">
-                    {sentences.map((sentence, index) => (
-                      <span key={sentence.id}>
-                        <span 
-                          className="hover:bg-yellow-100 transition-colors duration-200 rounded px-1 cursor-help print:hover:bg-transparent"
-                          title={`Sentence ${sentence.turn_number} by ${getAuthorName(sentence.participant_email)}`}
-                        >
-                          {sentence.sentence_text}
+              {sentences.length > 0 ? (
+                <div className="bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 p-8 rounded-xl print:bg-white print:p-4">
+                  <div className="prose prose-lg max-w-none">
+                    <p className="text-slate-800 leading-relaxed text-lg print:text-base print:leading-relaxed">
+                      {sentences.map((sentence, index) => (
+                        <span key={sentence.id}>
+                          <span 
+                            className="hover:bg-yellow-100 transition-colors duration-200 rounded px-1 cursor-help print:hover:bg-transparent"
+                            title={`Sentence ${sentence.turn_number} by ${getAuthorName(sentence.participant_email)}`}
+                          >
+                            {sentence.sentence_text}
+                          </span>
+                          {index < sentences.length - 1 && " "}
                         </span>
-                        {index < sentences.length - 1 && " "}
-                      </span>
-                    ))}
-                  </p>
+                      ))}
+                    </p>
+                  </div>
+                  {isInProgress && (
+                    <div className="mt-6 p-4 bg-blue-100 rounded-lg">
+                      <p className="text-blue-800 text-center">
+                        🚧 This story is still being written! Check back later to see how it develops.
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-slate-600 text-lg">No sentences have been written yet. The story is just beginning!</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Contributors Section */}
-          <Card className="shadow-lg mb-12 print:hidden">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-6 w-6 text-blue-600" />
-                <span>Story Contributors</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {sentences.map((sentence, index) => (
-                  <div key={sentence.id} className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-400">
-                    <div className="flex items-center space-x-3 mb-3">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                        {getAuthorName(sentence.participant_email)[0]}
+          {sentences.length >0 && (
+            <Card className="shadow-lg mb-12 print:hidden">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-6 w-6 text-blue-600" />
+                  <span>Story Contributors</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {sentences.map((sentence, index) => (
+                    <div key={sentence.id} className="bg-gray-50 p-4 rounded-lg border-l-4 border-blue-400">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
+                          {getAuthorName(sentence.participant_email)[0]}
+                        </div>
+                        <div>
+                          <span className="font-semibold text-slate-800">
+                            {getAuthorName(sentence.participant_email)}
+                          </span>
+                          <div className="text-slate-500 text-sm">Sentence {sentence.turn_number}</div>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-semibold text-slate-800">
-                          {getAuthorName(sentence.participant_email)}
-                        </span>
-                        <div className="text-slate-500 text-sm">Sentence {sentence.turn_number}</div>
-                      </div>
+                      <p className="text-slate-700 italic leading-relaxed">
+                        "{sentence.sentence_text}"
+                      </p>
                     </div>
-                    <p className="text-slate-700 italic leading-relaxed">
-                      "{sentence.sentence_text}"
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12 print:hidden">
@@ -277,14 +319,16 @@ const StoryView = () => {
               <Share className="mr-2 h-5 w-5" />
               Share Story
             </Button>
-            <Button 
-              onClick={handleDownload}
-              variant="outline"
-              className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3 text-lg transition-all duration-200 shadow-lg"
-            >
-              <Download className="mr-2 h-5 w-5" />
-              Download as Text
-            </Button>
+            {sentences.length > 0 && (
+              <Button 
+                onClick={handleDownload}
+                variant="outline"
+                className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-8 py-3 text-lg transition-all duration-200 shadow-lg"
+              >
+                <Download className="mr-2 h-5 w-5" />
+                Download as Text
+              </Button>
+            )}
           </div>
 
           {/* Call to Action */}
@@ -307,36 +351,38 @@ const StoryView = () => {
           </div>
 
           {/* Story Statistics */}
-          <Card className="shadow-lg mt-8 print:mt-4">
-            <CardContent className="pt-6 print:pt-4">
-              <div className="text-center">
-                <h3 className="text-lg font-semibold text-slate-800 mb-4 print:text-base print:mb-2">
-                  Story Statistics
-                </h3>
-                <div className="grid grid-cols-3 gap-4 print:gap-2">
-                  <div>
-                    <div className="text-3xl font-bold text-blue-600 print:text-xl">
-                      {sentences.length}
+          {sentences.length > 0 && (
+            <Card className="shadow-lg mt-8 print:mt-4">
+              <CardContent className="pt-6 print:pt-4">
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4 print:text-base print:mb-2">
+                    Story Statistics
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4 print:gap-2">
+                    <div>
+                      <div className="text-3xl font-bold text-blue-600 print:text-xl">
+                        {sentences.length}
+                      </div>
+                      <div className="text-sm text-slate-600 print:text-xs">Sentences</div>
                     </div>
-                    <div className="text-sm text-slate-600 print:text-xs">Sentences</div>
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold text-green-600 print:text-xl">
-                      {totalWords}
+                    <div>
+                      <div className="text-3xl font-bold text-green-600 print:text-xl">
+                        {totalWords}
+                      </div>
+                      <div className="text-sm text-slate-600 print:text-xs">Words</div>
                     </div>
-                    <div className="text-sm text-slate-600 print:text-xs">Words</div>
-                  </div>
-                  <div>
-                    <div className="text-3xl font-bold text-purple-600 print:text-xl">
-                      {participants?.length || gameData.max_participants}
+                    <div>
+                      <div className="text-3xl font-bold text-purple-600 print:text-xl">
+                        {participants?.length || gameData.max_participants}
+                      </div>
+                      <div className="text-sm text-slate-600 print:text-xs">Writers</div>
                     </div>
-                    <div className="text-sm text-slate-600 print:text-xs">Writers</div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>  
       </div>
     </div>
   );

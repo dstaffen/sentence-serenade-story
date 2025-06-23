@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ const GamePlay = () => {
   const [participantData, setParticipantData] = useState<ParticipantData | null>(null);
   const [previousSentence, setPreviousSentence] = useState<string>("");
   const [currentSentence, setCurrentSentence] = useState("");
+  const [submittedSentence, setSubmittedSentence] = useState(""); // Store the submitted sentence
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -70,9 +72,11 @@ const GamePlay = () => {
 
       if (error) {
         console.error('Failed to send turn notification email:', error);
+        // Don't throw error, just log it so the game continues
       }
     } catch (error) {
       console.error('Error sending turn notification:', error);
+      // Don't throw error, just log it so the game continues
     }
   };
 
@@ -114,9 +118,11 @@ const GamePlay = () => {
 
       if (error) {
         console.error('Failed to send complete story emails:', error);
+        // Don't throw error, just log it so the game continues
       }
     } catch (error) {
       console.error('Error sending complete story emails:', error);
+      // Don't throw error, just log it so the game continues
     }
   };
 
@@ -163,6 +169,18 @@ const GamePlay = () => {
 
       // Check if participant has already completed their turn
       if (participant.has_completed) {
+        // Fetch the participant's submitted sentence to display it
+        const { data: participantSentence, error: sentenceError } = await supabase
+          .from('sentences')
+          .select('sentence_text')
+          .eq('game_id', gameId)
+          .eq('participant_email', participant.email)
+          .single();
+
+        if (!sentenceError && participantSentence) {
+          setSubmittedSentence(participantSentence.sentence_text);
+        }
+        
         setHasSubmitted(true);
         return;
       }
@@ -187,6 +205,7 @@ const GamePlay = () => {
 
       if (existingSentences && existingSentences.length > 0) {
         // Participant has already submitted for this turn
+        setSubmittedSentence(existingSentences[0].sentence_text);
         setHasSubmitted(true);
         return;
       }
@@ -267,6 +286,7 @@ const GamePlay = () => {
 
       if (existingCheck && existingCheck.length > 0) {
         console.log("Sentence already exists for this turn and participant");
+        setSubmittedSentence(existingCheck[0].sentence_text);
         setHasSubmitted(true);
         toast({
           title: "Already submitted",
@@ -290,6 +310,7 @@ const GamePlay = () => {
         if (sentenceError.code === '23505') {
           // Duplicate key error - the sentence was already submitted
           console.log("Duplicate sentence detected, marking as submitted");
+          setSubmittedSentence(currentSentence.trim());
           setHasSubmitted(true);
           toast({
             title: "Already submitted",
@@ -299,6 +320,9 @@ const GamePlay = () => {
         }
         throw new Error("Failed to save your sentence");
       }
+
+      // Store the submitted sentence for display
+      setSubmittedSentence(currentSentence.trim());
 
       // Update participant's completion status
       const { error: participantError } = await supabase
@@ -468,7 +492,7 @@ const GamePlay = () => {
                         <Mail className="h-5 w-5 text-blue-600 mr-2" />
                         <p className="text-blue-800 font-medium">Your final sentence:</p>
                       </div>
-                      <p className="text-blue-700 italic">"{currentSentence}"</p>
+                      <p className="text-blue-700 italic">"{submittedSentence}"</p>
                     </div>
                     <p className="text-sm text-slate-500 mb-6">
                       Check your email inbox for the complete collaborative story!
@@ -482,7 +506,7 @@ const GamePlay = () => {
                     </p>
                     <div className="bg-blue-50 p-4 rounded-lg mb-6">
                       <p className="text-blue-800 font-medium">Your sentence:</p>
-                      <p className="text-blue-700 italic mt-2">"{currentSentence}"</p>
+                      <p className="text-blue-700 italic mt-2">"{submittedSentence}"</p>
                     </div>
                     <p className="text-sm text-slate-500 mb-6">
                       You'll be notified when it's your turn again or when the story is complete!
