@@ -62,7 +62,7 @@ const GamePlay = () => {
         body: {
           gameId: gameData.id,
           participantEmail: participantData.email,
-          participantId: participantData.id, // This is now the NEXT participant's ID
+          participantId: participantData.id, // This should be the NEXT participant's ID
           gameTitle: gameData.title,
           previousSentence: previousSentence,
           turnNumber: participantData.turn_order,
@@ -357,10 +357,11 @@ const GamePlay = () => {
           .single();
 
         if (!nextParticipantError && nextParticipant) {
-          // Send notification with the NEXT participant's data, not the current one
+          console.log("Sending notification to next participant:", nextParticipant);
+          // Send notification with the NEXT participant's data and ID
           await sendTurnNotification(
             { ...gameData, current_turn: gameData.current_turn + 1 },
-            nextParticipant, // This is the key fix - using nextParticipant data
+            nextParticipant, // Using nextParticipant ensures the email has the correct participant ID
             currentSentence.trim()
           );
         }
