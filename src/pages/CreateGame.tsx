@@ -212,17 +212,14 @@ const CreateGame = () => {
 
       console.log("Game created:", gameData);
 
-      // Prepare all participant emails (including host)
-      const allParticipantEmails = [
-        formData.hostEmail,
-        ...formData.participantEmails.filter(email => email.trim())
-      ];
-
-      // Create participant records with turn order
-      const participantRecords = allParticipantEmails.map((email, index) => ({
+      // Create participant records - ONLY for non-host participants
+      // Host is not a participant in the game flow
+      const participantEmails = formData.participantEmails.filter(email => email.trim());
+      
+      const participantRecords = participantEmails.map((email, index) => ({
         game_id: gameData.id,
         email: email.toLowerCase(),
-        turn_order: index + 1,
+        turn_order: index + 1, // Start from 1 for actual participants
         has_completed: false
       }));
 
@@ -238,12 +235,12 @@ const CreateGame = () => {
 
       console.log("Participants created:", participantsData);
 
-      // Create initial sentence record
+      // Create initial sentence record (from host, but not as a participant)
       const { error: sentenceError } = await supabase
         .from('sentences')
         .insert({
           game_id: gameData.id,
-          turn_number: 1,
+          turn_number: 0, // Turn 0 for opening sentence from host
           sentence_text: formData.openingSentence,
           participant_email: formData.hostEmail.toLowerCase()
         });
@@ -255,7 +252,7 @@ const CreateGame = () => {
 
       console.log("Initial sentence created");
 
-      // Find the first participant (turn_order = 1)
+      // Find the first participant (turn_order = 1) - this is the actual first player
       const firstParticipant = participantsData.find(p => p.turn_order === 1);
       
       // Send email notification to first participant
@@ -268,9 +265,9 @@ const CreateGame = () => {
         description: "Game created! The first participant will receive an email shortly to continue the story."
       });
       
-      // Navigate to the game page for the first participant
+      // Navigate to a success page or home instead of the game page
       setTimeout(() => {
-        navigate(`/game/${gameData.id}/${firstParticipant?.id}`);
+        navigate('/');
       }, 1500);
 
     } catch (error) {

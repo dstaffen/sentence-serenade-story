@@ -101,7 +101,7 @@ export const useGameData = (gameId: string | undefined, participantId: string | 
       }
 
       // If we reach here, it's the participant's turn and they haven't submitted yet
-      // Fetch the previous sentence (most recent one before current turn)
+      // Fetch the previous sentence - could be from turn 0 (opening) or previous participant
       const { data: sentences, error: sentenceError } = await supabase
         .from('sentences')
         .select('*')
@@ -118,7 +118,7 @@ export const useGameData = (gameId: string | undefined, participantId: string | 
       if (sentences && sentences.length > 0) {
         setPreviousSentence(sentences[0].sentence_text);
       } else {
-        // This might be the first turn, check if there's an opening sentence
+        // Check for opening sentence (turn 0)
         const { data: openingSentences, error: openingError } = await supabase
           .from('sentences')
           .select('*')
