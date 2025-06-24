@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -114,16 +113,27 @@ export const WritingInterface = ({
         throw new Error("Failed to update participant status");
       }
 
-      // Check if this is the final turn
-      const isLastTurn = gameData.current_turn === gameData.max_participants;
+      // FIXED: Check if this is the final turn by comparing current_turn with max_participants
+      // Since current_turn starts at 1 and goes up to max_participants
+      const isLastTurn = gameData.current_turn >= gameData.max_participants;
       
+      console.log("Turn logic:", {
+        currentTurn: gameData.current_turn,
+        maxParticipants: gameData.max_participants,
+        isLastTurn: isLastTurn
+      });
+
       // Update game status
-      const gameUpdate: any = {
-        current_turn: isLastTurn ? gameData.current_turn : gameData.current_turn + 1
-      };
+      const gameUpdate: any = {};
       
       if (isLastTurn) {
+        // Don't increment turn if it's the last turn, just mark as completed
         gameUpdate.status = 'completed';
+        console.log("Game completed - not incrementing turn");
+      } else {
+        // Only increment turn if it's not the last turn
+        gameUpdate.current_turn = gameData.current_turn + 1;
+        console.log("Incrementing turn to:", gameData.current_turn + 1);
       }
 
       const { error: gameError } = await supabase
@@ -138,24 +148,28 @@ export const WritingInterface = ({
 
       // If not the last turn, send email to next participant with THEIR participant ID
       if (!isLastTurn) {
+        const nextTurnNumber = gameData.current_turn + 1;
         const { data: nextParticipant, error: nextParticipantError } = await supabase
           .from('participants')
           .select('*')
           .eq('game_id', gameId)
-          .eq('turn_order', gameData.current_turn + 1)
+          .eq('turn_order', nextTurnNumber)
           .single();
 
         if (!nextParticipantError && nextParticipant) {
           console.log("Sending notification to next participant:", nextParticipant);
           // Send notification with the NEXT participant's data and ID
           await sendTurnNotification(
-            { ...gameData, current_turn: gameData.current_turn + 1 },
+            { ...gameData, current_turn: nextTurnNumber },
             nextParticipant, // Using nextParticipant ensures the email has the correct participant ID
             currentSentence.trim()
           );
+        } else {
+          console.error("Could not find next participant for turn:", nextTurnNumber, nextParticipantError);
         }
       } else {
         // Game is complete, send final story to all participants
+        console.log("Game complete, sending final story emails");
         await sendCompleteStoryEmails(gameData.id, gameData.title);
       }
 
