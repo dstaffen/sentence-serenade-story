@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -171,22 +172,22 @@ const GamePlay = () => {
       
       console.log("Is my turn?", isMyTurn, "Game current turn:", game.current_turn, "Participant turn order:", participant.turn_order);
 
-      // Check if there's already a sentence for this participant's current turn
+      // Check if there's already a sentence for the CURRENT GAME TURN from this participant
       const { data: existingSentences, error: existingSentenceError } = await supabase
         .from('sentences')
         .select('*')
         .eq('game_id', gameId)
-        .eq('turn_number', participant.turn_order)
+        .eq('turn_number', game.current_turn)
         .eq('participant_email', participant.email);
 
       if (existingSentenceError) {
         console.error("Error checking existing sentences:", existingSentenceError);
       }
 
-      console.log("Existing sentences for this participant:", existingSentences);
+      console.log("Existing sentences for current turn from this participant:", existingSentences);
 
       if (existingSentences && existingSentences.length > 0) {
-        // Participant has already submitted for their turn
+        // Participant has already submitted for the current turn
         setSubmittedSentence(existingSentences[0].sentence_text);
         setHasSubmitted(true);
         return;
@@ -204,7 +205,7 @@ const GamePlay = () => {
         .from('sentences')
         .select('*')
         .eq('game_id', gameId)
-        .lt('turn_number', participant.turn_order)
+        .lt('turn_number', game.current_turn)
         .order('turn_number', { ascending: false })
         .limit(1);
 
