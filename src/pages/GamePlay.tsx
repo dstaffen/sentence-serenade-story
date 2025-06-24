@@ -62,7 +62,7 @@ const GamePlay = () => {
         body: {
           gameId: gameData.id,
           participantEmail: participantData.email,
-          participantId: participantData.id,
+          participantId: participantData.id, // This is now the NEXT participant's ID
           gameTitle: gameData.title,
           previousSentence: previousSentence,
           turnNumber: participantData.turn_order,
@@ -347,7 +347,7 @@ const GamePlay = () => {
         throw new Error("Failed to update game status");
       }
 
-      // If not the last turn, send email to next participant
+      // If not the last turn, send email to next participant with THEIR participant ID
       if (!isLastTurn) {
         const { data: nextParticipant, error: nextParticipantError } = await supabase
           .from('participants')
@@ -357,9 +357,10 @@ const GamePlay = () => {
           .single();
 
         if (!nextParticipantError && nextParticipant) {
+          // Send notification with the NEXT participant's data, not the current one
           await sendTurnNotification(
             { ...gameData, current_turn: gameData.current_turn + 1 },
-            nextParticipant,
+            nextParticipant, // This is the key fix - using nextParticipant data
             currentSentence.trim()
           );
         }
