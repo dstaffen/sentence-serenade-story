@@ -1,7 +1,5 @@
-
 import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { ArrowLeft, BookOpen, CheckCircle, Mail } from "lucide-react";
 
 interface SubmittedStateProps {
@@ -26,7 +24,6 @@ export const SubmittedState = ({ gameData, submittedSentence }: SubmittedStatePr
           </div>
         </div>
       </header>
-
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-2xl mx-auto text-center">
           <Card className="shadow-lg">
@@ -67,19 +64,6 @@ export const SubmittedState = ({ gameData, submittedSentence }: SubmittedStatePr
                   </p>
                 </>
               )}
-
-              <div className="flex gap-4 justify-center">
-                <Link to={`/story/${gameData?.id}`}>
-                  <Button variant="outline">
-                    View Story Progress
-                  </Button>
-                </Link>
-                <Link to="/">
-                  <Button>
-                    Create New Game
-                  </Button>
-                </Link>
-              </div>
             </CardContent>
           </Card>
         </div>
